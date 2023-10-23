@@ -1,0 +1,54 @@
+import requests
+
+# Replace these with your ServiceNow instance details
+instance_url = "https://your-instance.service-now.com"
+username = "your_username"
+password = "your_password"
+
+# Replace these with the relevant ticket and group information
+ticket_number = "INC12345"
+new_group = "New_Group_ID"
+
+# Define your proxy settings
+proxies = {
+    "http": "http://your-proxy-url",
+    "https": "https://your-proxy-url"
+}
+
+# Define custom headers if needed
+custom_headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Basic base64encoded(username:password)"  # Replace with your credentials
+}
+
+# Create a session with proxies and custom headers
+session = requests.Session()
+session.proxies.update(proxies)
+session.headers.update(custom_headers)
+
+# Query the ticket and check if it exists
+incident_query_url = f"{instance_url}/api/now/table/incident?number={ticket_number}"
+incident_response = session.get(incident_query_url)
+
+if incident_response.status_code == 200:
+    incident_data = incident_response.json()
+    if incident_data.get("result"):
+        # Update the ticket with the new group
+        incident_id = incident_data["result"][0]["sys_id"]
+        update_url = f"{instance_url}/api/now/table/incident/{incident_id}"
+        update_payload = {
+            "assignment_group": new_group
+        }
+        update_response = session.put(update_url, json=update_payload)
+
+        if update_response.status_code == 200:
+            print(f"Ticket {ticket_number} reassigned to Group {new_group}")
+        else:
+            print(f"Failed to reassign the ticket. Status code: {update_response.status_code}")
+    else:
+        print(f"Ticket {ticket_number} not found")
+else:
+    print(f"Failed to query the ticket. Status code: {incident_response.status_code}")
+
+# Close the session
+session.close()
