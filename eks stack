@@ -1,0 +1,49 @@
+import boto3
+
+# AWS credentials and region
+aws_access_key = 'YOUR_ACCESS_KEY'
+aws_secret_key = 'YOUR_SECRET_KEY'
+region = 'us-west-2'  # Replace with your desired region
+
+# Initialize Boto3 clients for CloudFormation and EKS
+cf_client = boto3.client('cloudformation', region_name=region)
+eks_client = boto3.client('eks', region_name=region)
+
+# Parameters for the CloudFormation stack
+stack_name = 'MyEKSClusterStack'
+eks_cluster_name = 'MyEKSCluster'
+eks_nodegroup_name = 'MyNodeGroup'
+eks_nodegroup_instance_type = 'm5.large'  # Change to your preferred instance type
+
+# CloudFormation template URL
+cf_template_url = 'https://s3.amazonaws.com/my-bucket/eks-template.yaml'  # Replace with your template URL
+
+# Create the CloudFormation stack
+response = cf_client.create_stack(
+    StackName=stack_name,
+    TemplateURL=cf_template_url,
+    Parameters=[
+        {
+            'ParameterKey': 'ClusterName',
+            'ParameterValue': eks_cluster_name
+        },
+        {
+            'ParameterKey': 'NodeGroupName',
+            'ParameterValue': eks_nodegroup_name
+        },
+        {
+            'ParameterKey': 'NodeInstanceType',
+            'ParameterValue': eks_nodegroup_instance_type
+        }
+    ],
+    Capabilities=['CAPABILITY_IAM'],
+)
+
+# Wait for the CloudFormation stack to create the EKS cluster
+cf_client.get_waiter('stack_create_complete').wait(StackName=stack_name)
+print("CloudFormation stack creation complete.")
+
+# Describe the EKS cluster
+response = eks_client.describe_cluster(name=eks_cluster_name)
+cluster_status = response['cluster']['status']
+print(f'EKS Cluster {eks_cluster_name} status: {cluster_status}')
